@@ -1,0 +1,159 @@
+{a top level multiscript expressly for the 'MIDI Fighter 64' controller which intercepts MIDI messages
+and transforms them plus adds others to pass on to the instrument(for more than just sample-triggering)
+and back out to the MIDIFighter to change button ring colors for visual response on the controller}
+on init
+	set_script_title("MultiMofo")
+	{declare an array to contain the state of FX bypasses}
+	declare %FXArr[8] := (0, 0, 0, 0, 0, 0, 0, 0)
+	{declare an array to contain the choice of stutter style(regular, upward zip, downward zip)}
+	declare %Arr[4] := (0, 0, 0, 0)
+	message("")
+end on
+
+on midi_in
+{the only messages needed at the Multi level are the ones needed for more than just sample-triggering,
+or anything with more than just visual response... plus only 'note-ons'(because these are more for
+controlling parameters, the release of the button is unnecessary/just adds a double-trigger)}
+	if ($MIDI_COMMAND = $MIDI_COMMAND_NOTE_ON and $MIDI_BYTE_2 > 0)
+		select ($MIDI_BYTE_1)
+									{cat distortion bypass}
+			case 36 					
+				ignore_midi
+				%FXArr[0] := abs(%FXArr[0]-1) {<-creates a toggle for on/off interaction}
+				if(%FXArr[0]+%FXArr[1]+%FXArr[2]+%FXArr[3]+%FXArr[4]+%FXArr[5]+%FXArr[6] = 0)
+						%FXArr[7] := 0		{<-the last button in the row is a master fx bypass}
+					else
+						%FXArr[7] := 1
+				end if				{set colors on controller for cat fx and master fx bypasses}
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 71, abs(%FXArr[7]-1)*32+5)
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 36, abs(%FXArr[0]-1)*32+5)
+										{lowpass bypass}
+			case 37 					
+				ignore_midi
+				%FXArr[1] := abs(%FXArr[1]-1)
+				if(%FXArr[0]+%FXArr[1]+%FXArr[2]+%FXArr[3]+%FXArr[4]+%FXArr[5]+%FXArr[6] = 0)
+						%FXArr[7] := 0
+					else
+						%FXArr[7] := 1
+				end if
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 71, abs(%FXArr[7]-1)*32+5)
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 37, abs(%FXArr[1]-1)*32+5)
+										{phasis bypass}
+			case 38					
+				ignore_midi
+				%FXArr[2] := abs(%FXArr[2]-1)
+				if(%FXArr[0]+%FXArr[1]+%FXArr[2]+%FXArr[3]+%FXArr[4]+%FXArr[5]+%FXArr[6] = 0)
+						%FXArr[7] := 0
+					else
+						%FXArr[7] := 1
+				end if
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 71, abs(%FXArr[7]-1)*32+5)
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 38, abs(%FXArr[2]-1)*32+5)
+										{choral bypass}
+			case 39					
+				ignore_midi
+				%FXArr[3] := abs(%FXArr[3]-1)
+				if(%FXArr[0]+%FXArr[1]+%FXArr[2]+%FXArr[3]+%FXArr[4]+%FXArr[5]+%FXArr[6] = 0)
+						%FXArr[7] := 0
+					else
+						%FXArr[7] := 1
+				end if
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 71, abs(%FXArr[7]-1)*32+5)
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 39, abs(%FXArr[3]-1)*32+5)
+								{activate/deactivate inverse amp envelope}
+			case 40				
+				ignore_midi
+				%Arr[0] := abs(%Arr[0]-1)
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 40, abs(%Arr[0]-1)*29+8)
+									{select regular stutter}
+			case 41				
+				ignore_midi
+				%Arr[1] := abs(%Arr[1]-1)
+				if (%Arr[1]>0)
+					%Arr[2] := 0
+					%Arr[3] := 0
+					set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_OFF, 42, 0)
+					set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_OFF, 43, 0)
+				end if
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 41, abs(%Arr[1]-1)*29+8)
+									{select downward-zipper stutter}
+			case 42
+				ignore_midi
+				%Arr[2] := abs(%Arr[2]-1)
+				if (%Arr[2]>0)
+					%Arr[1] := 0
+					%Arr[3] := 0
+					set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 41, 37)
+					set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 43, 37)
+				end if
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 42, abs(%Arr[2]-1)*29+8)
+									{select upward-zipper stutter}
+			case 43
+				ignore_midi
+				%Arr[3] := abs(%Arr[3]-1)
+				if (%Arr[3]>0)
+					%Arr[1] := 0
+					%Arr[2] := 0
+					set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 41, 37)
+					set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 42, 37)
+				end if
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 43, abs(%Arr[3]-1)*29+8)
+										{highpass bypass}
+			case 68
+				ignore_midi
+				%FXArr[4] := abs(%FXArr[4]-1)
+				if(%FXArr[0]+%FXArr[1]+%FXArr[2]+%FXArr[3]+%FXArr[4]+%FXArr[5]+%FXArr[6] = 0)
+						%FXArr[7] := 0
+					else
+						%FXArr[7] := 1
+				end if
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 71, abs(%FXArr[7]-1)*32+5)
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 68, abs(%FXArr[4]-1)*32+5)
+										{replika delay bypass}
+			case 69
+				ignore_midi
+				%FXArr[5] := abs(%FXArr[5]-1)
+				if(%FXArr[0]+%FXArr[1]+%FXArr[2]+%FXArr[3]+%FXArr[4]+%FXArr[5]+%FXArr[6] = 0)
+						%FXArr[7] := 0
+					else
+						%FXArr[7] := 1
+				end if
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 71, abs(%FXArr[7]-1)*32+5)
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 69, abs(%FXArr[5]-1)*32+5)
+										{reverb bypass}
+			case 70
+				ignore_midi
+				%FXArr[6] := abs(%FXArr[6]-1)
+				if(%FXArr[0]+%FXArr[1]+%FXArr[2]+%FXArr[3]+%FXArr[4]+%FXArr[5]+%FXArr[6] = 0)
+						%FXArr[7] := 0
+					else
+						%FXArr[7] := 1
+				end if
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 71, abs(%FXArr[7]-1)*32+5)
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 70, abs(%FXArr[6]-1)*32+5)
+										{master fx bypass}
+			case 71
+				ignore_midi
+				%FXArr[7] := abs(%FXArr[7]-1)
+				set_midi($MIDI_CHANNEL, $MIDI_COMMAND_NOTE_ON, 71, abs(%FXArr[7]-1)*32+5)
+		end select
+	end if
+	if ($MIDI_COMMAND = $MIDI_COMMAND_NOTE_OFF)
+		select($MIDI_BYTE_1)		{ignore corresponding note-offs to avoid false-retriggering}
+			case 36 to 43
+				ignore_midi
+			case 68 to 71
+				ignore_midi
+		end select
+	end if
+end on
+
+{note: when manipulating MIDI information at the input, before sending it to the instrument level, 
+"Mode-View-Controller" paradigm should be considered: where MIDI is concerned, MULTI IS THE MODEL.
+(if the instrument script changes MIDI 
+information, multi script will not be able to track it)only multi should administer over MIDI,
+therefore, choices/states should be stored/changed/tracked at multi level
+(such as in the array of FX bypass-states and in the array of stutter-states here, these determine
+the state of what MIDI info. gets sent on to the instrument(not the FX or stutter states of the
+instrument itself, the FX and Stutter arrays in the instrument-level script keep track of those 
+and are set by this script directly)}
