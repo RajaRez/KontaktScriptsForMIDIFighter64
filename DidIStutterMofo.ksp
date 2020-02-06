@@ -1,0 +1,403 @@
+{
+it was shorter to write the code with numbers than their corresponding built-in variable names 
+so here is a key to understanding/remembering it all:
+$NI_BUS_OFFSET = 1024
+$ENGINE_PAR_CT_DISTORTION = 433
+$ENGINE_PAR_EFFECT_BYPASS = 248
+$ENGINE_PAR_OUTPUT_CHANNEL = 327
+$ENGINE_PAR_CUTOFF = 15
+$ENGINE_PAR_PHASIS_NOTCHES = 497
+$ENGINE_PAR_PHASIS_FEEDBACK = 495
+$ENGINE_PAR_CHORAL_DELAY = 547
+$ENGINE_PAR_CHORAL_MODE = 554
+$NI_CHORAL_MODE_SYNTH = 0
+$NI_CHORAL_MODE_ENSEMBLE = 1
+$NI_CHORAL_MODE_DIMENSION = 2
+$NI_CHORAL_MODE_UNIVERSAL = 3
+$ENGINE_PAR_RDL_TIME = 470
+$ENGINE_PAR_RDL_TYPE = 481
+$ENGINE_PAR_PR_DECAY = 447
+$ENGINE_PAR_PR_LOWSHELF = 448
+Note: At instrument level, just receive the MIDI, process for instrument control, 
+then output it (ignoring it first in order to process it, both for visual response
+on the MIDIFighter controller and for appropriate control of the instrument separately)
+}
+on init
+	set_script_title("DidIStutterMofo?")
+	declare $rndswitch       {<-every sound will also trigger..}
+	declare $rndcutoff		{...an accompanying random amount/bypass for highpass cutoff}
+	declare $lastfxd	{<-keep track of the last fx triggered to switch the context...}
+	declare $temp	   {...of buttons used to control fx parameters of the last fx selected}
+	declare $loop	{$temp = just extra; $loop = switch between looped groups and one-shots..}
+	declare $invamp  {...to create stuttering; $invamp = switch between inverse/regular amp-env}
+	declare %FXArry[8] := (0, 0, 0, 0, 0, 0, 0, 0)  {<-keep track of FX bypass states in array}
+	message("")
+end on
+
+function setFX       {custom func to switch between regular output and instr.-insert-fx bus}
+	if (search(%FXArry,1) = -1)
+		set_engine_par(327, -1, 0,-1,-1)
+		set_engine_par(327, -1, 1,-1,-1)
+		set_engine_par(327, -1, 2,-1,-1)
+		set_engine_par(327, -1, 3,-1,-1)
+	else
+		set_engine_par(327, 1024, 0,-1,-1)
+		set_engine_par(327, 1024, 1,-1,-1)
+		set_engine_par(327, 1024, 2,-1,-1)
+		set_engine_par(327, 1024, 3,-1,-1)
+	end if
+end function
+
+on note
+	$rndcutoff := random(0,250000)+750000
+	$rndswitch := random(0,1)
+	if ($loop = 1)    {if loop is on, switch to play looped groups for stutter-effect}
+		disallow_group(0)
+		disallow_group(1)
+		disallow_group(2)
+		disallow_group(3)
+		allow_group(4)
+		allow_group(5)
+		allow_group(6)
+		allow_group(7)
+	else					{if loop is off, only allow one-shot versions to play}
+		disallow_group(4)
+		disallow_group(5)
+		disallow_group(6)
+		disallow_group(7)
+		allow_group(0)
+		allow_group(1)
+		allow_group(2)
+		allow_group(3)
+	end if
+	ignore_event($EVENT_ID)
+	select($EVENT_NOTE)
+		case 36 						{cat distortion bypass}
+			if($EVENT_VELOCITY = 37)    {<-special velocity for ring color, detected here..}
+				%FXArry[0] := 0		{..at instrument script to also set parameters}
+			else
+				%FXArry[0] := 1
+				$lastfxd := 0	{<-if fx is on, keep track of last effect triggered}
+			end if
+			set_engine_par(248, abs(%FXArry[0]-1), -1,0,1024) {<-set fx bypass state}
+			call setFX										{<-route output bus}
+		case 37 						{lowpass bypass}
+			if($EVENT_VELOCITY = 37)
+				%FXArry[1] := 0
+			else
+				%FXArry[1] := 1
+				$lastfxd := 1
+			end if
+			set_engine_par(248, abs(%FXArry[1]-1), -1,1,1024)
+			call setFX
+		case 38						{phasis bypass}
+			if($EVENT_VELOCITY = 37)
+				%FXArry[2] := 0
+			else
+				%FXArry[2] := 1
+				$lastfxd := 2
+			end if
+			set_engine_par(248, abs(%FXArry[2]-1), -1,2,1024)
+			call setFX
+		case 39						{choral bypass}
+			if($EVENT_VELOCITY = 37)
+				%FXArry[3] := 0
+			else
+				%FXArry[3] := 1
+				$lastfxd := 3
+			end if
+			set_engine_par(248, abs(%FXArry[3]-1), -1,3,1024)
+			call setFX
+		case 68						{highpass bypass}
+			if($EVENT_VELOCITY = 37)
+				%FXArry[4] := 0
+			else
+				%FXArry[4] := 1
+				$lastfxd := 4
+			end if
+			set_engine_par(248, abs(%FXArry[4]-1), -1,4,1024)
+			call setFX
+		case 69						{replika delay bypass}
+			if($EVENT_VELOCITY = 37)
+				%FXArry[5] := 0
+			else
+				%FXArry[5] := 1
+				$lastfxd := 5
+			end if
+			set_engine_par(248, abs(%FXArry[5]-1), -1,5,1024)
+			call setFX
+		case 70						{reverb bypass}
+			if($EVENT_VELOCITY = 37)
+				%FXArry[6] := 0
+			else
+				%FXArry[6] := 1
+				$lastfxd := 6
+			end if
+			set_engine_par(248, abs(%FXArry[6]-1), -1,6,1024)
+			call setFX
+		case 71		{master fx bypass = switch whatevers already on to off and vice-versa}
+			if($EVENT_VELOCITY = 37)
+				%FXArry[7] := 0
+				set_engine_par(327, -1, 0,-1,-1)
+				set_engine_par(327, -1, 1,-1,-1)
+				set_engine_par(327, -1, 2,-1,-1)
+				set_engine_par(327, -1, 3,-1,-1)
+				set_engine_par(327, -1, 4,-1,-1)
+				set_engine_par(327, -1, 5,-1,-1)
+				set_engine_par(327, -1, 6,-1,-1)
+				set_engine_par(327, -1, 7,-1,-1)
+			else
+				%FXArry[7] := 1
+				set_engine_par(327, 1024, 0,-1,-1)
+				set_engine_par(327, 1024, 1,-1,-1)
+				set_engine_par(327, 1024, 2,-1,-1)
+				set_engine_par(327, 1024, 3,-1,-1)
+				set_engine_par(327, 1024, 4,-1,-1)
+				set_engine_par(327, 1024, 5,-1,-1)
+				set_engine_par(327, 1024, 6,-1,-1)
+				set_engine_par(327, 1024, 7,-1,-1)
+			end if
+		case 40		{amplitude inversion control - also needs to apply according to looped vs. one-shot groups}
+			$invamp := $invamp - 1
+			$invamp := abs($invamp)
+			if ($loop>0)
+				set_engine_par($MOD_TARGET_INVERT_SOURCE,$invamp,4,find_mod(4,"ENV_AHDSR"),find_target(4,find_mod(4,"ENV_AHDSR"),"ENV_AHDSR_VOLUME"))
+				set_engine_par($MOD_TARGET_INVERT_SOURCE,$invamp,5,find_mod(5,"ENV_AHDSR"),find_target(5,find_mod(5,"ENV_AHDSR"),"ENV_AHDSR_VOLUME"))
+				set_engine_par($MOD_TARGET_INVERT_SOURCE,$invamp,6,find_mod(6,"ENV_AHDSR"),find_target(6,find_mod(6,"ENV_AHDSR"),"ENV_AHDSR_VOLUME"))
+				set_engine_par($MOD_TARGET_INVERT_SOURCE,$invamp,7,find_mod(7,"ENV_AHDSR"),find_target(7,find_mod(7,"ENV_AHDSR"),"ENV_AHDSR_VOLUME"))
+			else
+				set_engine_par($MOD_TARGET_INVERT_SOURCE,$invamp,0,find_mod(0,"ENV_AHDSR"),find_target(0,find_mod(0,"ENV_AHDSR"),"ENV_AHDSR_VOLUME"))
+				set_engine_par($MOD_TARGET_INVERT_SOURCE,$invamp,1,find_mod(1,"ENV_AHDSR"),find_target(1,find_mod(1,"ENV_AHDSR"),"ENV_AHDSR_VOLUME"))
+				set_engine_par($MOD_TARGET_INVERT_SOURCE,$invamp,2,find_mod(2,"ENV_AHDSR"),find_target(2,find_mod(2,"ENV_AHDSR"),"ENV_AHDSR_VOLUME"))
+				set_engine_par($MOD_TARGET_INVERT_SOURCE,$invamp,3,find_mod(3,"ENV_AHDSR"),find_target(3,find_mod(3,"ENV_AHDSR"),"ENV_AHDSR_VOLUME"))
+			end if
+		case 41						{select regular stutter}
+			if ($EVENT_VELOCITY = 8)
+				$loop := 1
+			else
+				$loop := 0
+			end if
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,1,4,find_mod(4,"LFO_SAW"),find_target(4,find_mod(4,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,1,5,find_mod(5,"LFO_SAW"),find_target(5,find_mod(5,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,1,6,find_mod(6,"LFO_SAW"),find_target(6,find_mod(6,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,1,7,find_mod(7,"LFO_SAW"),find_target(7,find_mod(7,"LFO_SAW"),"LFO_LOOP_LEN"))
+		case 42						{select downward-zipper stutter}
+			if ($EVENT_VELOCITY = 8)
+				$loop := 1
+			else
+				$loop := 0
+			end if
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,0,4,find_mod(4,"LFO_SAW"),find_target(4,find_mod(4,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($MOD_TARGET_INVERT_SOURCE,1,4,find_mod(4,"LFO_SAW"),find_target(4,find_mod(4,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,0,5,find_mod(5,"LFO_SAW"),find_target(5,find_mod(5,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($MOD_TARGET_INVERT_SOURCE,1,5,find_mod(5,"LFO_SAW"),find_target(5,find_mod(5,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,0,6,find_mod(6,"LFO_SAW"),find_target(6,find_mod(6,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($MOD_TARGET_INVERT_SOURCE,1,6,find_mod(6,"LFO_SAW"),find_target(6,find_mod(6,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,0,7,find_mod(7,"LFO_SAW"),find_target(7,find_mod(7,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($MOD_TARGET_INVERT_SOURCE,1,7,find_mod(7,"LFO_SAW"),find_target(7,find_mod(7,"LFO_SAW"),"LFO_LOOP_LEN"))
+		case 43						{select upward-zipper stutter}
+			if ($EVENT_VELOCITY = 8)
+				$loop := 1
+			else
+				$loop := 0
+			end if
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,0,4,find_mod(4,"LFO_SAW"),find_target(4,find_mod(4,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($MOD_TARGET_INVERT_SOURCE,0,4,find_mod(4,"LFO_SAW"),find_target(4,find_mod(4,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,0,5,find_mod(5,"LFO_SAW"),find_target(5,find_mod(5,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($MOD_TARGET_INVERT_SOURCE,0,5,find_mod(5,"LFO_SAW"),find_target(5,find_mod(5,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,0,6,find_mod(6,"LFO_SAW"),find_target(6,find_mod(6,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($MOD_TARGET_INVERT_SOURCE,0,6,find_mod(6,"LFO_SAW"),find_target(6,find_mod(6,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($ENGINE_PAR_INTMOD_BYPASS,0,7,find_mod(7,"LFO_SAW"),find_target(7,find_mod(7,"LFO_SAW"),"LFO_LOOP_LEN"))
+			set_engine_par($MOD_TARGET_INVERT_SOURCE,0,7,find_mod(7,"LFO_SAW"),find_target(7,find_mod(7,"LFO_SAW"),"LFO_LOOP_LEN"))
+						{depending on whichever fx was selected last, the following 4 buttons(cases 72-75)...}
+		case 72		{will change to control parameter changes specific to the context of that most-recently selected fx}		
+			select($lastfxd)
+				case 0			{cat distortion}
+					$temp := get_engine_par(433,-1,0,1024)-200000 {<-get param, subtract from it}
+					if($temp<0)
+						$temp := 0		{<-clamp the minimum(kontakt seems to clamp maximums automatically?)}
+					end if          
+					set_engine_par(433,$temp,-1,0,1024)		{<-set param with new subtracted value}
+				case 1			{lowpass}
+					$temp := get_engine_par(15,-1,1,1024)-100000
+					if($temp<0)
+						$temp := 0
+					end if          
+					set_engine_par(15,$temp,-1,1,1024)
+				case 2			{phasis}
+					$temp := get_engine_par(497,-1,2,1024)-1
+					if($temp<2)
+						$temp := 2
+					end if          
+					set_engine_par(497,$temp,-1,2,1024)
+				case 3			{choral}
+					$temp := get_engine_par(547,-1,3,1024)-20000
+					if($temp<0)
+						$temp := 0
+					end if          
+					set_engine_par(547,$temp,-1,3,1024)
+				case 4			{highpass}
+					$temp := get_engine_par(15,-1,4,1024)-100000
+					if($temp<0)
+						$temp := 0
+					end if          
+					set_engine_par(15,$temp,-1,4,1024)
+				case 5			{replika delay}
+					$temp := get_engine_par(481,-1,5,1024)-1
+					if($temp<0)
+						$temp := 0
+					end if          
+					set_engine_par(481,$temp,-1,5,1024)
+				case 6			{reverb}
+					$temp := get_engine_par(448,-1,6,1024)-100000
+					if($temp<0)
+						$temp := 0
+					end if          
+					set_engine_par(448,$temp,-1,6,1024)
+			end select
+		case 73		{same as case 72, but either controlling a different param or..}
+			select($lastfxd)		{..subtracting from same param but to a lesser degree}
+				case 0			{cat distortion}
+					$temp := get_engine_par(433,-1,0,1024)-20000
+					if($temp<0)
+						$temp := 0
+					end if         
+					set_engine_par(433,$temp,-1,0,1024)
+				case 1			{lowpass}
+					$temp := get_engine_par(15,-1,1,1024)-20000
+					if($temp<0)
+						$temp := 0
+					end if          
+					set_engine_par(15,$temp,-1,1,1024)
+				case 2			{phasis}
+					$temp := get_engine_par(495,-1,2,1024)-40000
+					if($temp<0)
+						$temp := 0
+					end if          
+					set_engine_par(495,$temp,-1,2,1024)
+				case 3			{choral}
+					$temp := get_engine_par(554,-1,3,1024)-1
+					if($temp<0)
+						$temp := 0
+					end if          
+					set_engine_par(554,$temp,-1,3,1024)
+				case 4			{highpass}
+					$temp := get_engine_par(15,-1,4,1024)-20000
+					if($temp<0)
+						$temp := 0
+					end if          
+					set_engine_par(15,$temp,-1,4,1024)
+				case 5			{replika delay}
+					$temp := get_engine_par(470,-1,5,1024)-100000
+					if($temp<0)
+						$temp := 0
+					end if          
+					set_engine_par(470,$temp,-1,5,1024)
+				case 6			{reverb}
+					$temp := get_engine_par(447,-1,6,1024)-100000
+					if($temp<0)
+						$temp := 0
+					end if          
+					set_engine_par(447,$temp,-1,6,1024)
+			end select		
+        case 74	{same as case 75, but either controlling a different param or..}
+			select($lastfxd)	{..adding to same param but to a lesser degree}
+				case 0		{cat distortion}
+					$temp := get_engine_par(433,-1,0,1024)+20000
+					if($temp>1000000)
+						$temp := 1000000
+					end if          
+					set_engine_par(433,$temp,-1,0,1024)
+				case 1		{lowpass}
+					$temp := get_engine_par(15,-1,1,1024)+20000
+					if($temp<1000000)
+						$temp := 1000000
+					end if          
+					set_engine_par(15,$temp,-1,1,1024)
+				case 2		{phasis}
+					$temp := get_engine_par(495,-1,2,1024)+40000
+					if($temp>1000000)
+						$temp := 1000000
+					end if          
+					set_engine_par(495,$temp,-1,2,1024)
+				case 3		{choral}
+					$temp := get_engine_par(554,-1,3,1024)+1
+					if($temp>3)
+						$temp := 3
+					end if          
+					set_engine_par(554,$temp,-1,3,1024)
+				case 4		{highpass}
+					$temp := get_engine_par(15,-1,4,1024)+20000
+					if($temp>1000000)
+						$temp := 1000000
+					end if          
+					set_engine_par(15,$temp,-1,4,1024)
+				case 5		{replika delay}
+					$temp := get_engine_par(470,-1,5,1024)+100000
+					if($temp>1000000)
+						$temp := 1000000
+					end if          
+					set_engine_par(470,$temp,-1,5,1024)
+				case 6		{reverb}
+					$temp := get_engine_par(447,-1,6,1024)+100000
+					if($temp>1000000)
+						$temp := 1000000
+					end if          
+					set_engine_par(447,$temp,-1,6,1024)
+			end select
+		case 75		{same as 72 but applies addition instead of subtraction}
+			select($lastfxd)
+				case 0		{cat distortion}
+					$temp := get_engine_par(433,-1,0,1024)+200000
+					if($temp>1000000)
+						$temp := 1000000
+					end if          
+					set_engine_par(433,$temp,-1,0,1024)
+				case 1		{lowpass}
+					$temp := get_engine_par(15,-1,1,1024)+100000
+					if($temp>1000000)
+						$temp := 1000000
+					end if          
+					set_engine_par(15,$temp,-1,1,1024)
+				case 2		{phasis}
+					$temp := get_engine_par(497,-1,2,1024)+1
+					if($temp>12)
+						$temp := 12
+					end if          
+					set_engine_par(497,$temp,-1,2,1024)
+				case 3		{choral}
+					$temp := get_engine_par(547,-1,3,1024)+20000
+					if($temp>1000000)
+						$temp := 1000000
+					end if          
+					set_engine_par(547,$temp,-1,3,1024)
+				case 4		{highpass}
+					$temp := get_engine_par(15,-1,4,1024)+100000
+					if($temp>1000000)
+						$temp := 1000000
+					end if          
+					set_engine_par(15,$temp,-1,4,1024)
+				case 5		{replika delay}
+					$temp := get_engine_par(481,-1,5,1024)+1
+					if($temp>4)
+						$temp := 4
+					end if          
+					set_engine_par(481,$temp,-1,5,1024)
+				case 6		{reverb}
+					$temp := get_engine_par(448,-1,6,1024)+100000
+					if($temp>1000000)
+						$temp := 1000000
+					end if          
+					set_engine_par(448,$temp,-1,6,1024)
+			end select
+ {the rest just plays-notes/triggers-samples as regular, but with randomly selected highpass...} 
+ {..to add more gestural nuance to every note(beyond MIDIFighter only sending velocities 0/127)}
+		case 44 to 67			
+			set_engine_par($ENGINE_PAR_CUTOFF, $rndcutoff, %GROUPS_AFFECTED[0],0,-1)
+			set_engine_par(248, $rndswitch, %GROUPS_AFFECTED[0],0,-1)
+		case 76 to 99
+			set_engine_par($ENGINE_PAR_CUTOFF, $rndcutoff, %GROUPS_AFFECTED[0],0,-1)
+			set_engine_par(248, $rndswitch, %GROUPS_AFFECTED[0],0,-1)
+	end select
+	play_note($EVENT_NOTE,$EVENT_VELOCITY,0,-1)
+end on
