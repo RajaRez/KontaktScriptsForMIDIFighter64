@@ -3,16 +3,16 @@ and transforms them plus adds others to pass on to the instrument(for more than 
 and back out to the MIDIFighter to change button ring colors for visual response on the controller}
 on init
 	set_script_title("MultiMofo")
-	{declare an array to contain the state of FX bypasses}
+	{declare an array to contain the MIDI-buttons' states of FX bypasses}
 	declare %FXArr[8] := (0, 0, 0, 0, 0, 0, 0, 0)
-	{declare an array to contain the choice of stutter style(regular, upward zip, downward zip)}
+	{declare an array to contain the MIDI-button choice of stutter style(regular, upward zip, downward zip)}
 	declare %Arr[4] := (0, 0, 0, 0)
 	message("")
 end on
 
 on midi_in
 {the only messages needed at the Multi level are the ones needed for more than just sample-triggering,
-or anything with more than just visual response... plus only 'note-ons'(because these are more for
+or anything with more than just normal press/release visual response... and only 'note-ons'(because these are more for
 controlling parameters, the release of the button is unnecessary/just adds a double-trigger)}
 	if ($MIDI_COMMAND = $MIDI_COMMAND_NOTE_ON and $MIDI_BYTE_2 > 0)
 		select ($MIDI_BYTE_1)
@@ -149,7 +149,7 @@ controlling parameters, the release of the button is unnecessary/just adds a dou
 end on
 
 {note: when manipulating MIDI information at the input, before sending it to the instrument level, 
-"Mode-View-Controller" paradigm should be considered: where MIDI is concerned, MULTI IS THE MODEL.
+"Model-View-Controller" paradigm should be considered: where MIDI is concerned, MULTI IS THE MODEL.
 (if the instrument script changes MIDI 
 information, multi script will not be able to track it)only multi should administer over MIDI,
 therefore, choices/states should be stored/changed/tracked at multi level
