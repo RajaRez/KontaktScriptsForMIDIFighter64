@@ -31,6 +31,7 @@ on init
 	declare $loop	{$temp = just extra; $loop = switch between looped groups and one-shots..}
 	declare $invamp  {...to create stuttering; $invamp = switch between inverse/regular amp-env}
 	declare %FXArry[8] := (0, 0, 0, 0, 0, 0, 0, 0)  {<-keep track of FX bypass states in array}
+	declare %keyz[128]
 	message("")
 end on
 
@@ -391,13 +392,44 @@ on note
 					set_engine_par(448,$temp,-1,6,1024)
 			end select
  {the rest just plays-notes/triggers-samples as regular, but with randomly selected highpass...} 
- {..to add more gestural nuance to every note(beyond MIDIFighter only sending velocities 0/127)}
+ {..to add more gestural nuance to every note(beyond MIDIFighter only sending velocities 0/127)..}
+ {..also hi-hat buttons 95 and 99 send note-offs to all other hi-hats(simulates proper closing of hat))}
 		case 44 to 67			
 			set_engine_par($ENGINE_PAR_CUTOFF, $rndcutoff, %GROUPS_AFFECTED[0],0,-1)
 			set_engine_par(248, $rndswitch, %GROUPS_AFFECTED[0],0,-1)
-		case 76 to 99
+		case 76 to 94			
+			set_engine_par($ENGINE_PAR_CUTOFF, $rndcutoff, %GROUPS_AFFECTED[0],0,-1)
+			set_engine_par(248, $rndswitch, %GROUPS_AFFECTED[0],0,-1)
+		case 95
+			note_off(%keyz[78])
+			note_off(%keyz[79])
+			note_off(%keyz[82])
+			note_off(%keyz[83])
+			note_off(%keyz[86])
+			note_off(%keyz[87])
+			note_off(%keyz[90])
+			note_off(%keyz[91])
+			note_off(%keyz[94])
+			note_off(%keyz[98])
+			set_engine_par($ENGINE_PAR_CUTOFF, $rndcutoff, %GROUPS_AFFECTED[0],0,-1)
+			set_engine_par(248, $rndswitch, %GROUPS_AFFECTED[0],0,-1)
+		case 96 to 98
+			set_engine_par($ENGINE_PAR_CUTOFF, $rndcutoff, %GROUPS_AFFECTED[0],0,-1)
+			set_engine_par(248, $rndswitch, %GROUPS_AFFECTED[0],0,-1)
+		case 99
+			note_off(%keyz[78])
+			note_off(%keyz[79])
+			note_off(%keyz[82])
+			note_off(%keyz[83])
+			note_off(%keyz[86])
+			note_off(%keyz[87])
+			note_off(%keyz[90])
+			note_off(%keyz[91])
+			note_off(%keyz[94])
+			note_off(%keyz[98])
 			set_engine_par($ENGINE_PAR_CUTOFF, $rndcutoff, %GROUPS_AFFECTED[0],0,-1)
 			set_engine_par(248, $rndswitch, %GROUPS_AFFECTED[0],0,-1)
 	end select
 	play_note($EVENT_NOTE,$EVENT_VELOCITY,0,-1)
+	%keyz[$EVENT_NOTE] := $EVENT_ID
 end on
